@@ -1,3 +1,5 @@
+package org.example;
+
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -25,45 +27,46 @@ public class GrantParser {
     public static List<Student> parseText(String text) {
         List<Student> students = new ArrayList<>();
 
-        // 1. Очистка: убираем кавычки и приводим переносы к одному виду
-        String cleanText = text.replace("\"", "").replace("\r", "");
-        String[] lines = cleanText.split("\n");
+        // 1. Мәтінді тазалау: артық тырнақшаларды және бос орындарды реттеу
+        String cleanText = text.replace("\"", " ").replace("\r", "");
 
-        String currentSpecCode = "Не указан";
-        String currentSpecName = "Не указана";
+        // 2. Мамандықтар бойынша мәтінді блоктарға бөлеміз
+        // Мамандық коды: латын немесе кирилл "М" әрпі + 3 сан
+        String[] specBlocks = cleanText.split("(?=[MМ]\\d{3}\\s*-\\s*)");
 
-        // Паттерн для поиска специальности (М + 3 цифры)
-        // Ищем в строке что-то вроде "М056 - Название" или просто "М056"
-        Pattern specPattern = Pattern.compile("(М\\d{3})\\s?[-–—]?\\s?(.*)");
+        // Студентті анықтайтын паттерн:
+        // №(сан) + ТЖК(8 сан) + ФИО(мәтін) + Балл(сан) + ВУЗ(3 сан)
+        // [\\s\\S]+? — бұл ФИО-ның бірнеше жолға созылуына мүмкіндік береді (ленивый поиск)
+        Pattern studentPattern = Pattern.compile("(\\d+)\\s+(\\d{8})\\s+([A-ZА-ЯӘІҢҒҮҰҚӨҺ\\s\\n\\-]+?)\\s+(\\d{2,3})\\s+(\\d{3})");
 
-        // Паттерн для строки студента (включая казахские буквы)
-        Pattern studentPattern = Pattern.compile("^(\\d+)\\s+(\\d+.*?)\\s+([А-ЯЁA-ZӘІҢҒҮҰҚӨҺ\\s\\-]{3,})\\s+(\\d+)\\s+(\\d+)$");
+        for (String block : specBlocks) {
+            if (block.trim().isEmpty()) continue;
 
-        for (String line : lines) {
-            line = line.trim();
-            if (line.isEmpty() || line.equalsIgnoreCase("№") || line.contains("ТЖК")) continue;
+            // Мамандық атын алу
+            String specCode = "Белгісіз";
+            String specName = "Белгісіз";
+            Pattern specInfoPattern = Pattern.compile("^([MМ]\\d{3})\\s*-\\s*([^\\n]+)");
+            Matcher specMatcher = specInfoPattern.matcher(block);
 
-            // Сначала проверяем, не является ли строка новой специальностью
-            Matcher specMatcher = specPattern.matcher(line);
             if (specMatcher.find()) {
-                currentSpecCode = specMatcher.group(1).trim();
-                String namePart = specMatcher.group(2).trim();
-                if (!namePart.isEmpty()) {
-                    currentSpecName = namePart;
-                }
-                continue; // Переходим к следующей строке
+                specCode = specMatcher.group(1).replace("М", "M"); // Латынша M-ге айналдыру
+                specName = specMatcher.group(2).trim();
             }
 
-            // Проверяем, является ли строка данными студента
-            Matcher stMatcher = studentPattern.matcher(line);
-            if (stMatcher.find()) {
+            // Блок ішінен барлық студенттерді іздеу
+            Matcher stMatcher = studentPattern.matcher(block);
+            while (stMatcher.find()) {
                 String order = stMatcher.group(1);
-                String tjk = stMatcher.group(2).replace("|", "").trim();
-                String name = stMatcher.group(3).trim();
+                String tjk = stMatcher.group(2);
+                // ФИО ішіндегі артық жол ауыстыру белгілерін жою
+                String fullName = stMatcher.group(3).replaceAll("\\s+", " ").trim();
                 String score = stMatcher.group(4);
-                String uni = stMatcher.group(5);
+                String uniCode = stMatcher.group(5);
 
-                students.add(new Student(currentSpecCode, currentSpecName, order, tjk, name, score, uni));
+                // Тақырыптарды (№, ТЖК) студент ретінде алмас үшін тексеру
+                if (!fullName.isEmpty() && !fullName.contains("Тегі")) {
+                    students.add(new Student(specCode, specName, order, tjk, fullName, score, uniCode));
+                }
             }
         }
         return students;
