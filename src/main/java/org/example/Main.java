@@ -42,7 +42,6 @@
             }
         }
 
-        // ================= SAVE GROUPED TABLES =================
 
         private static void saveToPdf(List<GrantParser.Student> students,
                                       String outputPath) throws IOException {
@@ -83,7 +82,7 @@
                     y = 800;
                 }
 
-                // ==== Заголовок специальности ====
+
                 content.setFont(font, 14);
                 content.beginText();
                 content.newLineAtOffset(margin, y);
@@ -94,7 +93,6 @@
 
                 content.setFont(font, 9);
 
-                // Заголовок таблицы
                 y = drawRow(content, font, headers,
                         colWidths, margin, y, rowHeight);
 
@@ -133,7 +131,7 @@
         }
 
 
-        // ================= DRAW ROW =================
+
 
         private static float drawRow(PDPageContentStream content,
                                      PDType0Font font,
@@ -161,25 +159,22 @@
             return y - rowHeight;
         }
 
-        // ================= SEARCH =================
+
 
         private static void search(List<GrantParser.Student> students) {
-
             Scanner sc = new Scanner(System.in);
             System.out.println("\nВведите код специальности (например, M066) или 'exit':");
 
             while (true) {
-
                 System.out.print("> ");
                 String code = sc.nextLine().trim();
 
-                if (code.equalsIgnoreCase("exit"))
-                    break;
+                if (code.equalsIgnoreCase("exit")) break;
 
+                // Use startsWith and ignore case for a flexible search
                 students.stream()
-                        .filter(s -> s.specCode.equalsIgnoreCase(code))
-                        .max(Comparator.comparingInt(
-                                s -> Integer.parseInt(s.score)))
+                        .filter(s -> s.specCode.toLowerCase().startsWith(code.toLowerCase()))
+                        .max(Comparator.comparingInt(s -> Integer.parseInt(s.score)))
                         .ifPresentOrElse(
                                 s -> System.out.printf(
                                         "Лучший студент: %s | %s | Балл: %s | ВУЗ: %s%n",
